@@ -99,10 +99,15 @@ class Game {
 	skySays = "Let's play a game together...";
 	cards = [];
 	chosenCards = [];
+	matches = 0;
 	mouse = new Mouse();
+	canPickCard = false;
 
 	constructor() {
-		this.timers.push(new Timer(260, () => this.skySays = "These are a few of my favorite things!", false));
+		this.timers.push(new Timer(260, () => {
+			this.skySays = "These are a few of my favorite things - match them!"
+			this.canPickCard = true;
+		}, false));
 
 		const unshuffled = [];
 
@@ -137,10 +142,8 @@ class Game {
 		};
 
 		const [mouseX, mouseY, leftClick] = mouse();
-		const waitingOnCards = this.cards.filter(card => card.tweens.length > 0
-			|| card.timers.length > 0).length > 0;
 
-		if (!waitingOnCards && this.mouse.leftClickUp) {
+		if (this.canPickCard && this.mouse.leftClickUp) {
 			const index = getIndexForCoords(this.mouse.x, this.mouse.y);
 			const indexIsNull = index === null;
 			const indexIsAlreadyChosen = this.chosenCards.filter(c => c.index === index).length > 0;
@@ -151,16 +154,29 @@ class Game {
 
 					if (chosenCard.hidden) {
 						chosenCard.flip();
+						this.skySays = chosenCard.flavor;
 						this.chosenCards.push(chosenCard);
 
 						if (this.chosenCards.length === 2) {
 							if (this.chosenCards[0].name !== this.chosenCards[1].name) {
+								this.canPickCard = false;
 								const card1 = this.chosenCards[0];
 								const card2 = this.chosenCards[1];
 								this.timers.push(new Timer(60, () => {
 									card1.flip();
 									card2.flip();
+									this.canPickCard = true;
+									this.skySays = "Keep trying!"
 								}));
+							} else {
+								this.matches++;
+
+								const winner = this.matches === 12;
+								if (winner) {
+									this.skySays = "You win!";
+								} else {
+									this.skySays = "It's a match!";
+								}
 							}
 							this.chosenCards = [];
 						}
