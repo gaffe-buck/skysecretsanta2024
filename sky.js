@@ -82,7 +82,6 @@ function TIC() {
 	init();
 	background();
 	speechBubble(game.skySays);
-
 	game?.TIC();
 }
 
@@ -102,8 +101,17 @@ class Game {
 	matches = 0;
 	mouse = new Mouse();
 	canPickCard = false;
+	canDismissTitle = false;
+	canReset = false;
+	title = {};
+	winner = {};
 
 	constructor() {
+		this.title = new Title(() => this.canDismissTitle = true);
+		this.winner = new Winner();
+	}
+
+	dismissTitleShuffleAndDeal() {
 		this.timers.push(new Timer(260, () => {
 			this.skySays = "These are a few of my favorite things - match them!"
 			this.canPickCard = true;
@@ -143,6 +151,16 @@ class Game {
 
 		const [mouseX, mouseY, leftClick] = mouse();
 
+		if (this.canReset && leftClick && mouseY > 100) {
+			game = new Game();
+			return;
+		}
+
+		if (this.canDismissTitle && this.mouse.leftClick) {
+			this.canDismissTitle = false;
+			this.title.hide(() => this.dismissTitleShuffleAndDeal());
+		}
+
 		if (this.canPickCard && this.mouse.leftClickUp) {
 			const index = getIndexForCoords(this.mouse.x, this.mouse.y);
 			const indexIsNull = index === null;
@@ -173,7 +191,8 @@ class Game {
 
 								const winner = this.matches === 12;
 								if (winner) {
-									this.skySays = "You win!";
+									this.winner.show(() => this.canReset = true);
+									this.skySays = "Click me to play again!";
 								} else {
 									this.skySays = "It's a match!";
 								}
@@ -184,6 +203,95 @@ class Game {
 				}
 			}
 		}
+
+		this.title.TIC();
+		this.winner.TIC();
+	}
+}
+
+class Winner {
+	x = 120;
+	y = -64;
+
+	tweens = [];
+	timers = [];
+
+	constructor(callback) { }
+
+	show(callback) {
+		this.tweens.push(new Tween({
+			target: this,
+			durationFrames: 120,
+			startY: -64,
+			endY: 20,
+			easing: easeOutBounce,
+			callback: callback
+		}));
+	}
+
+	TIC() {
+		const textColor = 0;
+		const bgColor = 3;
+
+		for (const t of this.tweens) {
+			t.TIC();
+		}
+		this.tweens = this.tweens.filter(t => !t.done);
+
+		for (const timer of this.timers) {
+			timer.TIC();
+		}
+		this.timers = this.timers.filter(t => !t.triggered);
+
+		printWithBorder("YOU WIN!!!", this.x, this.y + 20, textColor, bgColor, false, 3, false, true);
+	}
+}
+
+class Title {
+	x = 120;
+	y = 20;
+
+	tweens = [];
+	timers = [];
+
+	constructor(callback) {
+		this.tweens.push(new Tween({
+			target: this,
+			durationFrames: 120,
+			startY: -64,
+			endY: 20,
+			easing: easeOutBounce,
+			callback: callback
+		}));
+	}
+
+	hide(callback) {
+		this.tweens.push(new Tween({
+			target: this,
+			durationFrames: 15,
+			startY: 20,
+			endY: -64,
+			callback: callback
+		}));
+	}
+
+	TIC() {
+		const textColor = 0;
+		const bgColor = 3;
+
+		for (const t of this.tweens) {
+			t.TIC();
+		}
+		this.tweens = this.tweens.filter(t => !t.done);
+
+		for (const timer of this.timers) {
+			timer.TIC();
+		}
+		this.timers = this.timers.filter(t => !t.triggered);
+
+		printWithBorder("A Few of Sky's", this.x, this.y, textColor, bgColor, false, 3, true, true);
+		printWithBorder("FAVORITE", this.x, this.y + 20, textColor, bgColor, false, 3, false, true);
+		printWithBorder("THINGS", this.x, this.y + 40, textColor, bgColor, false, 3, false, true);
 	}
 }
 
@@ -497,6 +605,27 @@ class Timer {
 			}
 		}
 	}
+}
+
+function printWithBorder(text, x, y, color, bgColor, fixed, scale, smallFont, centered) {
+	let xOffset = 0
+	let w = 0
+	if (centered) {
+		clip(0, 0, 0, 0)
+		w = print(text, 0, 0, color, fixed, scale, smallFont)
+		clip()
+
+		xOffset = -w / 2
+	}
+
+	if (bgColor !== null) {
+		print(text, x + xOffset - 1, y, bgColor, fixed, scale, smallFont)
+		print(text, x + xOffset + 1, y, bgColor, fixed, scale, smallFont)
+		print(text, x + xOffset, y - 1, bgColor, fixed, scale, smallFont)
+		print(text, x + xOffset, y + 1, bgColor, fixed, scale, smallFont)
+	}
+
+	return print(text, x + xOffset, y, color, fixed, scale, smallFont)
 }
 
 function lerp(a, b, t) {
