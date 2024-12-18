@@ -7,7 +7,7 @@
 // script:  js
 
 let initialized = false;
-let cards = [];
+let game = {};
 
 const CARD_DATA = [
 	{
@@ -73,40 +73,102 @@ const CARD_DATA = [
 ];
 const CARD_W = 24;
 const CARD_H = 36;
+const TOP_MARGIN = 2;
+const LEFT_MARGIN = 16;
+const C_GUTTER = 2;
+const R_GUTTER = 2;
 
 function TIC() {
 	init();
 	background();
-	speechBubble("These are a few of my favorite things! Match them!");
+	speechBubble(game.skySays);
 
-	for (const card of cards) {
-		card.TIC();
-	}
+	game?.TIC();
 }
 
 function init() {
 	if (initialized) return;
 
-	const unshuffled = [];
-
-	for (const card of CARD_DATA) {
-		unshuffled.push(new Card(card));
-		unshuffled.push(new Card(card));
-	}
-
-	cards = [];
-
-	while (cards.length < 24) {
-		const index = cards.length;
-		const randomUnshuffledIndex = Math.floor(Math.random() * unshuffled.length);
-		const card = unshuffled.splice(randomUnshuffledIndex, 1)[0];
-
-		card.setIndex(index);
-
-		cards.push(card);
-	}
+	game = new Game();
 
 	initialized = true;
+}
+
+class Game {
+	timers = [];
+	skySays = "Let's play a game together...";
+	cards = [];
+	chosenCards = [];
+	mouse = new Mouse();
+
+	constructor() {
+		this.timers.push(new Timer(260, () => this.skySays = "These are a few of my favorite things!", false));
+
+		const unshuffled = [];
+
+		for (const card of CARD_DATA) {
+			unshuffled.push(new Card(card));
+			unshuffled.push(new Card(card));
+		}
+
+		this.cards = [];
+
+		while (this.cards.length < 24) {
+			const index = this.cards.length;
+			const randomUnshuffledIndex = Math.floor(Math.random() * unshuffled.length);
+			const card = unshuffled.splice(randomUnshuffledIndex, 1)[0];
+
+			card.setIndex(index);
+
+			this.cards.push(card);
+		}
+	}
+
+	TIC() {
+		this.mouse.TIC();
+
+		for (const timer of this.timers) {
+			timer.TIC();
+		}
+		this.timers = this.timers.filter(t => !t.triggered);
+
+		for (const card of this.cards) {
+			card.TIC();
+		};
+
+		const [mouseX, mouseY, leftClick] = mouse();
+		const waitingOnCards = this.cards.filter(card => card.tweens.length > 0
+			|| card.timers.length > 0).length > 0;
+
+		if (!waitingOnCards && this.mouse.leftClickUp) {
+			const index = getIndexForCoords(this.mouse.x, this.mouse.y);
+			const indexIsNull = index === null;
+			const indexIsAlreadyChosen = this.chosenCards.filter(c => c.index === index).length > 0;
+
+			if (!indexIsNull && !indexIsAlreadyChosen) {
+				if (this.chosenCards.length < 2) {
+					const chosenCard = this.cards[index];
+
+					if (chosenCard.hidden) {
+						chosenCard.flip();
+						this.chosenCards.push(chosenCard);
+
+						if (this.chosenCards.length === 2) {
+							if (this.chosenCards[0].name !== this.chosenCards[1].name) {
+								const card1 = this.chosenCards[0];
+								const card2 = this.chosenCards[1];
+								this.timers.push(new Timer(60, () => {
+									card1.flip();
+									card2.flip();
+								}));
+							}
+							this.chosenCards = [];
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 class Card {
@@ -133,6 +195,7 @@ class Card {
 
 	setIndex(index) {
 		const endCoords = getCoordsForIndex(index);
+		this.index = index;
 
 		this.tweens.push(new Tween({
 			target: this,
@@ -201,11 +264,25 @@ class Card {
 	}
 }
 
+class Mouse {
+	x = 0;
+	y = 0;
+	leftClickUp = false;
+	leftClick = false;
+
+	TIC() {
+		const [mouseX, mouseY, leftClick] = mouse();
+
+		this.x = mouseX;
+		this.y = mouseY;
+		this.leftClickUp = leftClick === false && this.leftClick === true;
+		this.leftClick = leftClick;
+	}
+}
+
 function background() {
 	const BG_COLOR = 1;
 	const FRAME_COLOR = 2;
-	const CARD_WIDTH = 24;
-	const CARD_HEIGHT = 36;
 
 	cls(BG_COLOR);
 
@@ -215,8 +292,8 @@ function background() {
 		rectb(
 			x,
 			y,
-			CARD_WIDTH,
-			CARD_HEIGHT,
+			CARD_W,
+			CARD_H,
 			FRAME_COLOR);
 	}
 }
@@ -229,19 +306,26 @@ function getRowAndColForIndex(index) {
 }
 
 function getCoordsForIndex(index) {
-	const TOP_MARGIN = 2;
-	const LEFT_MARGIN = 16;
-	const C_GUTTER = 2;
-	const R_GUTTER = 2;
-	const CARD_WIDTH = 24;
-	const CARD_HEIGHT = 36;
-
 	const { row, col } = getRowAndColForIndex(index);
 
-	const x = LEFT_MARGIN + (col * CARD_WIDTH) + (col * C_GUTTER);
-	const y = TOP_MARGIN + (row * CARD_HEIGHT) + (R_GUTTER * row);
+	const x = LEFT_MARGIN + (col * CARD_W) + (col * C_GUTTER);
+	const y = TOP_MARGIN + (row * CARD_H) + (R_GUTTER * row);
 
 	return { x, y };
+}
+
+function getIndexForCoords(x, y) {
+	for (let i = 0; i < 24; i++) {
+		const cardCoords = getCoordsForIndex(i);
+		if (x >= cardCoords.x
+			&& x <= cardCoords.x + CARD_W
+			&& y >= cardCoords.y
+			&& y <= cardCoords.y + CARD_H) {
+			return i;
+		}
+	}
+
+	return null;
 }
 
 function speechBubble(text) {
