@@ -53,7 +53,7 @@ const CARD_DATA = [
 	{
 		name: "spong",
 		flavor: "Speng beb?",
-		sprite:50,
+		sprite: 50,
 	},
 	{
 		name: "dookie",
@@ -195,6 +195,7 @@ class Game {
 									this.skySays = "Click me to play again!";
 								} else {
 									this.skySays = "It's a match!";
+									sfx(2);
 								}
 							}
 							this.chosenCards = [];
@@ -367,6 +368,7 @@ class Card {
 
 	flip() {
 		const flipCallback = () => {
+			if (this.hidden) sfx(1); else sfx(0);
 			this.hidden = !this.hidden;
 			this.tweens.push(
 				new Tween({
@@ -377,6 +379,7 @@ class Card {
 				}));
 		};
 
+		if (this.hidden) sfx(0); else sfx(1);
 		this.tweens.push(new Tween({
 			target: this,
 			startW: CARD_W,
@@ -824,7 +827,9 @@ function spriteWithBorder(sprite, x, y, colorKey, scale, flip, rotate, w, h, bor
 // </WAVES>
 
 // <SFX>
-// 000:000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000304000000000
+// 000:0101010201020103010401050106010701070107f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100c29000000000
+// 001:0100010f010e010d010c010b010a010901080100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100c29000000000
+// 002:001000100020006000a000d0f040f080f080f010f030f050f070f090f0a0f010f000f000f000f000f000f000f000f000f000f000f000f000f000f000c7b000000000
 // </SFX>
 
 // <TRACKS>
